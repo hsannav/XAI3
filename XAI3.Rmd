@@ -1,0 +1,108 @@
+---
+title: "XAI3"
+author: "Hugo Sánchez Navalón & María Verdú Gómez"
+date: "2024-05-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(randomForest)
+library(pdp)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+```
+
+# Exercise 1
+
+```{r}
+data.bikes <- read.csv('day.csv') %>%
+  mutate(value = 1) %>%
+  spread(key = season, value = value, fill = 0) %>%
+  mutate(MISTY = ifelse(weathersit == 2, 1, 0),
+         RAIN = ifelse(weathersit %in% c(3, 4), 1, 0),
+         temp = temp * (39 + 8) - 8,
+         hum = hum * 100,
+         windspeed = windspeed * 67,
+         days_since_2011 = as.numeric(as.Date(dteday) - as.Date("2011-01-01")))
+
+colnames(data.bikes)[16:19] = c("season1", "season2", "season3", "season4")
+
+data.bikes <- data.bikes %>%
+  select(workingday, holiday, season2, season3, season4, MISTY, RAIN, temp, hum, windspeed, days_since_2011, cnt)
+
+rf_model <- randomForest(cnt ~ ., data = data.bikes)
+
+pd_days_since_2011 <- partial(rf_model, pred.var = "days_since_2011")
+pd_temp <- partial(rf_model, pred.var = "temp")
+pd_hum <- partial(rf_model, pred.var = "hum")
+pd_windspeed <- partial(rf_model, pred.var = "windspeed")
+
+ggplot(pd_days_since_2011, aes(x=days_since_2011, y=yhat)) +
+  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+  labs(x = 'Days since 1/1/2011', y = 'Bikes rented', title = 'Partial Dependence Plot - Days since 1/1/2011')
+
+ggplot(pd_temp, aes(x=temp, y=yhat)) +
+  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+  labs(x = 'Temperature', y = 'Bikes rented', title = 'Partial Dependence Plot - Temperature')
+
+ggplot(pd_hum, aes(x=hum, y=yhat)) +
+  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+  labs(x = 'Humidity', y = 'Bikes rented', title = 'Partial Dependence Plot - Humidity')
+
+ggplot(pd_windspeed, aes(x=windspeed, y=yhat)) +
+  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+  labs(x = 'Windspeed', y = 'Bikes rented', title = 'Partial Dependence Plot - Windspeed')
+```
+
+
+# Exercise 2
+
+```{r}
+sample_data <- data.bikes %>% sample_n(500)
+
+pd_2d <- partial(rf_model, pred.var = c("temp", "hum"), data = sample_data)
+
+ggplot(mapping = aes(x = temp, y = hum)) +
+  geom_tile(data = pd_2d, aes(fill = yhat)) + 
+  scale_fill_gradient(low = "blue", high = "red", name = "Bikes rented") +
+  geom_rug(data = sample_data, aes(x = temp), sides = "b", alpha = 0.5) +
+  geom_rug(data = sample_data, aes(y = hum), sides = "l", alpha = 0.5) +
+  theme_minimal() +
+  labs(x = "Temperature", y = "Humidity", 
+       title = "2D Partial Dependence Plot with Density and Rugs")
+```
+
+# Exercise 3
+
+```{r}
+house_data <- read.csv("kc_house_data.csv") 
+
+sample_house_data <- house_data %>% sample_n(1000)
+
+rf_model_house <- randomForest(price ~ bedrooms + bathrooms + sqft_living + sqft_lot + floors + yr_built, data = house_data)
+
+pd_bedrooms <- partial(rf_model_house, pred.var = "bedrooms", data = sample_house_data)
+pd_bathrooms <- partial(rf_model_house, pred.var = "bathrooms", data = sample_house_data)
+pd_sqft_living <- partial(rf_model_house, pred.var = "sqft_living", data = sample_house_data)
+pd_floors <- partial(rf_model_house, pred.var = "floors", data = sample_house_data)
+
+ggplot(pd_bedrooms, aes(x=days_since_2011, y=yhat)) +
+  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+  labs(x = 'Bedrooms', y = 'Price', title = 'Partial Dependence Plot - Bedrooms')
+
+ggplot(pd_bathrooms, aes(x=days_since_2011, y=yhat)) +
+  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+  labs(x = 'Bathrooms', y = 'Price', title = 'Partial Dependence Plot - Bathrooms')
+
+ggplot(pd_sqft_living, aes(x=days_since_2011, y=yhat)) +
+  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+  labs(x = 'Squeare feet - Living', y = 'Price', title = 'Partial Dependence Plot - Square feet-living')
+
+ggplot(pd_floors, aes(x=days_since_2011, y=yhat)) +
+  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+  labs(x = 'Floors', y = 'Price', title = 'Partial Dependence Plot - Floors')
+
+```
+
