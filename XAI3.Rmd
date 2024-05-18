@@ -17,9 +17,9 @@ library(tidyr)
 # Exercise 1
 
 ```{r}
-data.bikes <- read.csv('day.csv') %>%
-  mutate(value = 1) %>%
-  spread(key = season, value = value, fill = 0) %>%
+data.bikes <- read.csv('day.csv') |>
+  mutate(value = 1) |>
+  spread(key = season, value = value, fill = 0) |>
   mutate(MISTY = ifelse(weathersit == 2, 1, 0),
          RAIN = ifelse(weathersit %in% c(3, 4), 1, 0),
          temp = temp * (39 + 8) - 8,
@@ -29,7 +29,7 @@ data.bikes <- read.csv('day.csv') %>%
 
 colnames(data.bikes)[16:19] = c("season1", "season2", "season3", "season4")
 
-data.bikes <- data.bikes %>%
+data.bikes <- data.bikes |>
   select(workingday, holiday, season2, season3, season4, MISTY, RAIN, temp, hum, windspeed, days_since_2011, cnt)
 
 rf_model <- randomForest(cnt ~ ., data = data.bikes)
@@ -39,20 +39,25 @@ pd_temp <- partial(rf_model, pred.var = "temp")
 pd_hum <- partial(rf_model, pred.var = "hum")
 pd_windspeed <- partial(rf_model, pred.var = "windspeed")
 
-ggplot(pd_days_since_2011, aes(x=days_since_2011, y=yhat)) +
-  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+ggplot() +
+  geom_line(data=pd_days_since_2011, mapping=aes(x=days_since_2011, y=yhat)) + 
+  geom_rug(data=data.bikes, mapping=aes(x=days_since_2011), sides = 'b', alpha = 0.5, stat='count') + 
+  theme_minimal() +
   labs(x = 'Days since 1/1/2011', y = 'Bikes rented', title = 'Partial Dependence Plot - Days since 1/1/2011')
 
-ggplot(pd_temp, aes(x=temp, y=yhat)) +
-  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+ggplot() +
+  geom_line(data=pd_temp, mapping=aes(x=temp, y=yhat)) + 
+  geom_rug(data=data.bikes, mapping=aes(x=temp), sides = 'b', alpha = 0.5, stat='count') + theme_minimal() +
   labs(x = 'Temperature', y = 'Bikes rented', title = 'Partial Dependence Plot - Temperature')
 
-ggplot(pd_hum, aes(x=hum, y=yhat)) +
-  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+ggplot() +
+  geom_line(data=pd_hum, mapping=aes(x=hum, y=yhat)) + 
+  geom_rug(data=data.bikes, mapping=aes(x=hum), sides = 'b', alpha = 0.5, stat='count') + theme_minimal() +
   labs(x = 'Humidity', y = 'Bikes rented', title = 'Partial Dependence Plot - Humidity')
 
-ggplot(pd_windspeed, aes(x=windspeed, y=yhat)) +
-  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+ggplot() +
+  geom_line(data=pd_windspeed, mapping=aes(x=windspeed, y=yhat)) + 
+  geom_rug(data=data.bikes, mapping=aes(x=windspeed), sides = 'b', alpha = 0.5, stat='count') + theme_minimal() +
   labs(x = 'Windspeed', y = 'Bikes rented', title = 'Partial Dependence Plot - Windspeed')
 ```
 
@@ -60,7 +65,7 @@ ggplot(pd_windspeed, aes(x=windspeed, y=yhat)) +
 # Exercise 2
 
 ```{r}
-sample_data <- data.bikes %>% sample_n(500)
+sample_data <- data.bikes |> sample_n(500)
 
 pd_2d <- partial(rf_model, pred.var = c("temp", "hum"), data = sample_data)
 
@@ -71,7 +76,7 @@ ggplot(mapping = aes(x = temp, y = hum)) +
   geom_rug(data = sample_data, aes(y = hum), sides = "l", alpha = 0.5) +
   theme_minimal() +
   labs(x = "Temperature", y = "Humidity", 
-       title = "2D Partial Dependence Plot with Density and Rugs")
+       title = "2D Partial Dependence Plot")
 ```
 
 # Exercise 3
@@ -79,7 +84,7 @@ ggplot(mapping = aes(x = temp, y = hum)) +
 ```{r}
 house_data <- read.csv("kc_house_data.csv") 
 
-sample_house_data <- house_data %>% sample_n(1000)
+sample_house_data <- house_data |> sample_n(1000)
 
 rf_model_house <- randomForest(price ~ bedrooms + bathrooms + sqft_living + sqft_lot + floors + yr_built, data = house_data)
 
@@ -88,20 +93,28 @@ pd_bathrooms <- partial(rf_model_house, pred.var = "bathrooms", data = sample_ho
 pd_sqft_living <- partial(rf_model_house, pred.var = "sqft_living", data = sample_house_data)
 pd_floors <- partial(rf_model_house, pred.var = "floors", data = sample_house_data)
 
-ggplot(pd_bedrooms, aes(x=days_since_2011, y=yhat)) +
-  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+ggplot() +
+  geom_line(data = pd_bedrooms, mapping = aes(x=bedrooms, y=yhat)) + 
+  geom_rug(data = sample_house_data, aes(x = bedrooms), sides = "b", alpha = 0.5, stat='count') + 
+  theme_minimal() +
   labs(x = 'Bedrooms', y = 'Price', title = 'Partial Dependence Plot - Bedrooms')
 
-ggplot(pd_bathrooms, aes(x=days_since_2011, y=yhat)) +
-  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+ggplot() +
+  geom_line(data = pd_bathrooms, mapping = aes(x=bathrooms, y=yhat)) + 
+  geom_rug(data = sample_house_data, aes(x = bathrooms), sides = "b", alpha = 0.5, stat='count') + 
+  theme_minimal() +
   labs(x = 'Bathrooms', y = 'Price', title = 'Partial Dependence Plot - Bathrooms')
 
-ggplot(pd_sqft_living, aes(x=days_since_2011, y=yhat)) +
-  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
-  labs(x = 'Squeare feet - Living', y = 'Price', title = 'Partial Dependence Plot - Square feet-living')
+ggplot() +
+  geom_line(data = pd_sqft_living, mapping = aes(x=sqft_living, y=yhat)) + 
+  geom_rug(data = sample_house_data, aes(x = sqft_living), sides = "b", alpha = 0.5, stat='count') + 
+  theme_minimal() +
+  labs(x = 'Square feet-living', y = 'Price', title = 'Partial Dependence Plot - Square feet-living')
 
-ggplot(pd_floors, aes(x=days_since_2011, y=yhat)) +
-  geom_line() + geom_rug(sides = 'b1') + theme_minimal() +
+ggplot() +
+  geom_line(data = pd_floors, mapping = aes(x=floors, y=yhat)) + 
+  geom_rug(data = sample_house_data, aes(x = floors), sides = "b", alpha = 0.5, stat='count') + 
+  theme_minimal() +
   labs(x = 'Floors', y = 'Price', title = 'Partial Dependence Plot - Floors')
 
 ```
